@@ -179,12 +179,57 @@ button.danger:hover { background: var(--danger); color: var(--base3); }
     margin-top: 1rem;
 }
 .grid .tile {
+    position: relative;
     background: var(--bg-alt);
     border: 1px solid var(--border);
     border-radius: 6px;
     overflow: hidden;
     display: flex; flex-direction: column;
 }
+.grid .tile .pick {
+    position: absolute;
+    top: 0.45rem;
+    left: 0.45rem;
+    z-index: 2;
+    width: 1.15rem;
+    height: 1.15rem;
+    margin: 0;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+.grid .tile:has(.pick:checked) {
+    outline: 2px solid var(--accent);
+    outline-offset: -1px;
+}
+.bulkbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.75rem 1rem;
+    margin: 1rem 0 0;
+    padding: 0.75rem 1rem;
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+.bulkbar label {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    gap: 0.25rem;
+}
+.bulkbar label.bulk-select-all {
+    flex-direction: row;
+    align-items: center;
+    align-self: center;
+}
+.bulkbar select,
+.bulkbar input[type=text] {
+    width: auto;
+    min-width: 160px;
+    margin-top: 0;
+}
+.bulkbar button { align-self: center; }
 .grid .tile a.thumb {
     display: block; aspect-ratio: 1 / 1; overflow: hidden;
     background:

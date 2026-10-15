@@ -6,6 +6,65 @@ require_once __DIR__ . '/functions.php';
 $user = current_user();
 $mine = isset($_GET['mine']) && $user;
 $page_title = $mine ? 'My images' : 'Upload';
+$bulk_error = '';
+
+if ($user && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_to_gallery') {
+    if (!csrf_check()) {
+        $bulk_error = 'Bad request.';
+    } else {
+        $image_ids = $_POST['image_ids'] ?? [];
+        if (!is_array($image_ids)) {
+            $image_ids = [];
+        }
+        $has_ids = false;
+        foreach ($image_ids as $id) {
+            if ((is_int($id) || (is_string($id) && ctype_digit($id))) && (int) $id > 0) {
+                $has_ids = true;
+                break;
+            }
+        }
+        $gallery_sel = trim((string) ($_POST['gallery_id'] ?? '0'));
+        $new_name    = trim((string) ($_POST['new_gallery_name'] ?? ''));
+        $pdo         = db();
+        $gallery_id  = null;
+        $gallery_slug = null;
+
+        if (!$has_ids) {
+            $bulk_error = 'Select at least one image.';
+        } elseif ($gallery_sel === 'new' || $new_name !== '') {
+            $created = create_user_gallery($pdo, (int) $user['id'], $new_name);
+            if (!$created['ok']) {
+                $bulk_error = $created['error'];
+            } else {
+                $gallery_id   = $created['id'];
+                $gallery_slug = $created['slug'];
+            }
+        } elseif (ctype_digit($gallery_sel) && (int) $gallery_sel > 0) {
+            $stmt = $pdo->prepare('SELECT id, slug FROM galleries WHERE id = ? AND user_id = ?');
+            $stmt->execute([(int) $gallery_sel, $user['id']]);
+            $g = $stmt->fetch();
+            if (!$g) {
+                $bulk_error = 'Gallery not found.';
+            } else {
+                $gallery_id   = (int) $g['id'];
+                $gallery_slug = $g['slug'];
+            }
+        } else {
+            $bulk_error = 'Choose a gallery.';
+        }
+
+        if ($bulk_error === '' && $gallery_id !== null) {
+            $result = add_user_images_to_gallery($pdo, (int) $user['id'], $gallery_id, $image_ids);
+            if ($result['ok']) {
+                header('Location: gallery.php?s=' . urlencode((string) $gallery_slug));
+                exit;
+            }
+            $bulk_error = $result['error'];
+        }
+    }
+}
+
+$user_galleries = $user ? get_user_galleries((int) $user['id']) : [];
 
 include __DIR__ . '/header.php';
 
@@ -46,11 +105,10 @@ $accept_attr = rtrim($accept_attr, ',');
                 <p class="muted" id="dzfile">No files selected.</p>
                 <input id="file" type="file" name="image[]" accept="<?= h($accept_attr) ?>" required multiple>
             </label>
-            <?php $galleries = get_user_galleries((int) $user['id']); ?>
             <label>Add to gallery <span class="muted">(optional)</span>
                 <select name="gallery_id" id="gallery_select">
                     <option value="0">— No gallery —</option>
-                    <?php foreach ($galleries as $g): ?>
+                    <?php foreach ($user_galleries as $g): ?>
                         <option value="<?= h((string) $g['id']) ?>"><?= h($g['name']) ?></option>
                     <?php endforeach; ?>
                     <option value="new">New gallery…</option>
@@ -122,22 +180,69 @@ $accept_attr = rtrim($accept_attr, ',');
     ?>
 
     <h2 style="margin-top:2rem"><?= $mine ? 'All your uploads' : 'Recent uploads' ?></h2>
+    <?php if ($bulk_error): ?><p class="err"><?= h($bulk_error) ?></p><?php endif; ?>
     <?php if (!$images): ?>
         <p class="muted">Nothing yet. Upload something above.</p>
     <?php else: ?>
-        <div class="grid">
-            <?php foreach ($images as $img): ?>
-                <div class="tile">
-                    <a class="thumb" href="view.php?s=<?= h($img['slug']) ?>">
-                        <img loading="lazy" src="i.php?s=<?= h($img['slug']) ?>" alt="">
-                    </a>
-                    <div class="meta">
-                        <span><?= h(strtoupper($img['format'])) ?></span>
-                        <span><?= h(human_size((int) $img['size'])) ?></span>
+        <form method="post" action="" id="bulkGalleryForm">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="add_to_gallery">
+            <div class="bulkbar">
+                <label class="bulk-select-all">
+                    <input type="checkbox" id="select_all"> Select all
+                </label>
+                <label class="bulk-gallery">Add to gallery
+                    <select name="gallery_id" id="bulk_gallery_select">
+                        <option value="0">— Choose gallery —</option>
+                        <?php foreach ($user_galleries as $g): ?>
+                            <option value="<?= h((string) $g['id']) ?>"><?= h($g['name']) ?></option>
+                        <?php endforeach; ?>
+                        <option value="new">New gallery…</option>
+                    </select>
+                </label>
+                <label class="bulk-new" id="bulk_new_gallery_row" style="display:none">New gallery name
+                    <input type="text" name="new_gallery_name" id="bulk_new_gallery_name" maxlength="100" placeholder="Gallery name">
+                </label>
+                <button class="primary" type="submit">Add checked to gallery</button>
+            </div>
+            <div class="grid">
+                <?php foreach ($images as $img): ?>
+                    <div class="tile">
+                        <input class="pick" type="checkbox" name="image_ids[]" value="<?= h((string) $img['id']) ?>" aria-label="Select image">
+                        <a class="thumb" href="view.php?s=<?= h($img['slug']) ?>">
+                            <img loading="lazy" src="i.php?s=<?= h($img['slug']) ?>" alt="">
+                        </a>
+                        <div class="meta">
+                            <span><?= h(strtoupper($img['format'])) ?></span>
+                            <span><?= h(human_size((int) $img['size'])) ?></span>
+                        </div>
                     </div>
-                </div>
-            <?php endforeach; ?>
-        </div>
+                <?php endforeach; ?>
+            </div>
+        </form>
+        <script>
+        (function () {
+            var form = document.getElementById('bulkGalleryForm');
+            if (!form) return;
+            var all = document.getElementById('select_all');
+            var picks = form.querySelectorAll('input.pick');
+            var sel = document.getElementById('bulk_gallery_select');
+            var newRow = document.getElementById('bulk_new_gallery_row');
+            if (all) {
+                all.addEventListener('change', function () {
+                    picks.forEach(function (cb) { cb.checked = all.checked; });
+                });
+            }
+            if (sel && newRow) {
+                sel.addEventListener('change', function () {
+                    newRow.style.display = this.value === 'new' ? '' : 'none';
+                    if (this.value !== 'new') {
+                        document.getElementById('bulk_new_gallery_name').value = '';
+                    }
+                });
+            }
+        })();
+        </script>
     <?php endif; ?>
 <?php endif; ?>
 
