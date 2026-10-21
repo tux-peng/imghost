@@ -126,10 +126,21 @@ foreach ($files as $file) {
         continue;
     }
 
-    $slug     = unique_slug();
-    $convert  = in_array($format, get_convert_to_webp_formats(), true) && $format !== 'webp';
+    $slug          = unique_slug();
+    $convert_jxl   = in_array($format, get_convert_to_jxl_formats(), true) && $format !== 'jxl';
+    $convert_webp  = !$convert_jxl && in_array($format, get_convert_to_webp_formats(), true) && $format !== 'webp';
 
-    if ($convert) {
+    if ($convert_jxl) {
+        $ext      = 'jxl';
+        $filename = $slug . '.' . $ext;
+        $dest     = $dir . '/' . $filename;
+        if (!convert_image_to_jxl($tmp, $dest, $format)) {
+            $errors[] = h($orig) . ': Could not convert to JPEG XL (ImageMagick).';
+            continue;
+        }
+        $format = 'jxl';
+        $size   = (int) filesize($dest);
+    } elseif ($convert_webp) {
         $ext      = 'webp';
         $filename = $slug . '.' . $ext;
         $dest     = $dir . '/' . $filename;

@@ -39,9 +39,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $conv = array_values(array_intersect($conv, $fmts, $valid_fmts));
                     $conv = array_values(array_diff($conv, ['webp']));
 
+                    $conv_jxl = $_POST['convert_jxl'] ?? [];
+                    if (!is_array($conv_jxl)) $conv_jxl = [];
+                    $conv_jxl = array_values(array_intersect($conv_jxl, $fmts, $valid_fmts));
+                    $conv_jxl = array_values(array_diff($conv_jxl, ['jxl']));
+
                     set_setting('registration_mode', $reg);
                     set_setting('allowed_formats', implode(',', $fmts));
                     set_setting('convert_to_webp', implode(',', $conv));
+                    set_setting('convert_to_jxl', implode(',', $conv_jxl));
                     set_setting('default_theme', $theme);
                     set_setting('max_size_mb', (string) $max);
                     set_setting('site_name', substr($name, 0, 80));
@@ -197,6 +203,28 @@ include __DIR__ . '/header.php';
                     <label>
                         <input type="checkbox" name="convert_webp[]" value="<?= h($slug) ?>"
                                <?= in_array($slug, $current_convert, true) ? 'checked' : '' ?>>
+                        <?= h($info['label']) ?>
+                    </label>
+                <?php endforeach; ?>
+            </div>
+        </fieldset>
+
+        <fieldset style="border:0; padding:0; margin-top:1rem">
+            <legend style="font-size:0.92rem; color:var(--fg-strong)">Convert to JPEG XL</legend>
+            <p class="muted" style="margin:0.2rem 0 0.6rem">
+                Require these allowed types to be converted with ImageMagick on upload.
+                <?= imagemagick_supports_jxl_convert() ? 'ImageMagick JPEG XL support is available.' : 'ImageMagick JPEG XL support is missing — conversion will fail until it is enabled.' ?>
+                If a type is also set to convert to WebP, JPEG XL wins.
+            </p>
+            <div class="fmtgrid">
+                <?php
+                $current_convert_jxl = get_convert_to_jxl_formats();
+                foreach (all_formats() as $slug => $info):
+                    if ($slug === 'jxl') continue;
+                ?>
+                    <label>
+                        <input type="checkbox" name="convert_jxl[]" value="<?= h($slug) ?>"
+                               <?= in_array($slug, $current_convert_jxl, true) ? 'checked' : '' ?>>
                         <?= h($info['label']) ?>
                     </label>
                 <?php endforeach; ?>

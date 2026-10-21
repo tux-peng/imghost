@@ -82,6 +82,15 @@ function get_convert_to_webp_formats(): array {
     return array_values(array_diff($list, ['webp']));
 }
 
+function get_convert_to_jxl_formats(): array {
+    $raw = get_setting('convert_to_jxl', '');
+    if ($raw === null || $raw === '') return [];
+    $list = array_filter(array_map('trim', explode(',', $raw)));
+    $valid = array_keys(all_formats());
+    $list = array_values(array_intersect($list, $valid));
+    return array_values(array_diff($list, ['jxl']));
+}
+
 function get_site_name(): string {
     return get_setting('site_name', 'Image Host') ?? 'Image Host';
 }
