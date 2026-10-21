@@ -40,14 +40,14 @@ function default_allowed_formats(): array {
 }
 
 function get_setting(string $key, ?string $default = null): ?string {
-    $stmt = db()->prepare('SELECT value FROM settings WHERE key = ?');
+    $stmt = db()->prepare('SELECT value FROM settings WHERE ' . settings_key_sql() . ' = ?');
     $stmt->execute([$key]);
     $row = $stmt->fetch();
     return $row ? $row['value'] : $default;
 }
 
 function set_setting(string $key, string $value): void {
-    $stmt = db()->prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
+    $stmt = db()->prepare(upsert_setting_sql());
     $stmt->execute([$key, $value]);
 }
 
