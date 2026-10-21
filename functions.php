@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/gallery_actions.php';
+require_once __DIR__ . '/password_actions.php';
+require_once __DIR__ . '/image_urls.php';
+require_once __DIR__ . '/image_convert.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start([
@@ -68,6 +71,15 @@ function get_default_theme(): string {
 
 function get_max_size_mb(): int {
     return max(1, (int) get_setting('max_size_mb', '15'));
+}
+
+function get_convert_to_webp_formats(): array {
+    $raw = get_setting('convert_to_webp', '');
+    if ($raw === null || $raw === '') return [];
+    $list = array_filter(array_map('trim', explode(',', $raw)));
+    $valid = array_keys(all_formats());
+    $list = array_values(array_intersect($list, $valid));
+    return array_values(array_diff($list, ['webp']));
 }
 
 function get_site_name(): string {
@@ -247,4 +259,13 @@ function base_url(): string {
     $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
     $script = dirname($_SERVER['SCRIPT_NAME'] ?? '/');
     return rtrim($scheme . '://' . $host . $script, '/');
+}
+
+function image_direct_url(array $img): string {
+    $file = (string) ($img['filename'] ?? '');
+    if ($file === '' && !empty($img['slug'])) {
+        $ext = format_extension((string) ($img['format'] ?? ''));
+        $file = $img['slug'] . ($ext !== '' && $ext !== 'bin' ? '.' . $ext : '');
+    }
+    return rtrim(base_url(), '/') . image_direct_path($file);
 }

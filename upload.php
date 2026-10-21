@@ -127,13 +127,27 @@ foreach ($files as $file) {
     }
 
     $slug     = unique_slug();
-    $ext      = format_extension($format);
-    $filename = $slug . '.' . $ext;
-    $dest     = $dir . '/' . $filename;
+    $convert  = in_array($format, get_convert_to_webp_formats(), true) && $format !== 'webp';
 
-    if (!move_uploaded_file($tmp, $dest)) {
-        $errors[] = h($orig) . ': Could not save file.';
-        continue;
+    if ($convert) {
+        $ext      = 'webp';
+        $filename = $slug . '.' . $ext;
+        $dest     = $dir . '/' . $filename;
+        if (!convert_image_to_webp($tmp, $dest, $format)) {
+            $errors[] = h($orig) . ': Could not convert to WebP (GD).';
+            continue;
+        }
+        $format = 'webp';
+        $size   = (int) filesize($dest);
+    } else {
+        $ext      = format_extension($format);
+        $filename = $slug . '.' . $ext;
+        $dest     = $dir . '/' . $filename;
+
+        if (!move_uploaded_file($tmp, $dest)) {
+            $errors[] = h($orig) . ': Could not save file.';
+            continue;
+        }
     }
     @chmod($dest, 0644);
 
