@@ -1,0 +1,170 @@
+{
+	admin 0.0.0.0:2019
+}
+
+(common) {
+	import deny_bots
+	import block_dotfiles
+}
+
+(php_site) {
+	import common
+	php_fastcgi php-fpm:9000
+	file_server browse
+}
+
+(php_site_strict) {
+	import php_site
+	header {
+		Cross-Origin-Embedder-Policy require-corp
+		Cross-Origin-Opener-Policy same-origin
+		Cache-Control "no-cache, no-store, must-revalidate"
+	}
+}
+
+(auth) {
+	basic_auth {
+		webmaster $2a$14$IA2pZE6PMsvvAII5mZLiNeoswj9V6W1p51g/s4PNdNT1JDit9Z9Q6
+	}
+}
+
+(deny_bots) {
+	@robots path /robots.txt
+	handle @robots {
+		header Content-Type text/plain
+		respond "User-agent: *
+Disallow: /" 200
+	}
+}
+
+(block_dotfiles) {
+	@dotfiles path */.git/*
+	respond @dotfiles 403
+}
+
+(duckdns_tls) {
+	tls {
+		dns duckdns {env.DUCKDNS_TOKEN}
+	}
+}
+
+(porkbun_tls) {
+	tls {
+		dns porkbun {
+			api_key {env.PORKBUN_API_KEY}
+			api_secret_key {env.PORKBUN_API_SECRET}
+		}
+	}
+}
+
+(cloudflare_tls) {
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+	}
+}
+
+pony.jpenguin.duckdns.org http://pony.brohoof.xyz {
+	import duckdns_tls
+	import block_dotfiles
+	import deny_bots
+	root * /var/www/html/pony
+	php_fastcgi php-fpm:9000
+	file_server browse
+	header {
+		Cross-Origin-Embedder-Policy require-corp
+		Cross-Origin-Opener-Policy same-origin
+		Cache-Control "no-cache, no-store, must-revalidate"
+	}
+}
+
+ui.jpenguin.duckdns.org http://ui.tuxpeng.top {
+	import duckdns_tls
+	import block_dotfiles
+	import deny_bots
+	root * /var/www/html/ui
+	php_fastcgi php-fpm:9000
+	file_server browse
+}
+
+adminer.jpenguin.duckdns.org http://adminer.tuxpeng.top {
+	import duckdns_tls
+	import block_dotfiles
+	import deny_bots
+	root * /var/www/html/adminer
+	php_fastcgi php-fpm:9000
+	file_server browse
+	header Cache-Control "no-cache, no-store, must-revalidate"
+}
+
+speedtest.jpenguin.duckdns.org http://speedtest.tuxpeng.top {
+	import duckdns_tls
+	import block_dotfiles
+	import deny_bots
+	root * /var/www/html/speedtest
+	php_fastcgi php-fpm:9000
+	file_server browse
+}
+
+adguard.jpenguin.duckdns.org http://adguard.tuxpeng.top {
+	import duckdns_tls
+	import block_dotfiles
+	import deny_bots
+	reverse_proxy 192.168.1.7:980
+}
+
+jellyfin.jpenguin.duckdns.org http://jellyfin.tuxpeng.top {
+	import duckdns_tls
+	import block_dotfiles
+	import deny_bots
+	reverse_proxy 192.168.1.7:8096
+}
+
+nextcloud.jpenguin.duckdns.org http://nextcloud.tuxpeng.top {
+	import duckdns_tls
+	import block_dotfiles
+	import deny_bots
+	reverse_proxy 192.168.1.7:11000
+}
+
+portainer.jpenguin.duckdns.org {
+	import duckdns_tls
+	import block_dotfiles
+	import deny_bots
+	reverse_proxy 192.168.1.7:9000
+}
+
+Http://archive.brohoof.xyz {
+	import block_dotfiles
+	import deny_bots
+	basic_auth {
+		thebestponyis $2a$14$.3rHZDt5gdlYfFhrlVLJoO2lQv0/wiDO5.TtL2Nvbdr1HqEp/K2ZO
+	}
+	reverse_proxy 192.168.1.9:8880
+}
+
+http://about.tuxpeng.top http://test.brohoof.xyz about.jpenguin.duckdns.org {
+	import duckdns_tls
+	import php_site
+	root * /var/www/html/about
+}
+
+portainer.tuxpeng.top {
+	import porkbun_tls
+	import block_dotfiles
+	import deny_bots
+	reverse_proxy 192.168.1.7:9000
+}
+
+resume.jpenguin.duckdns.org http://resume.tuxpeng.top {
+	import duckdns_tls
+	import block_dotfiles
+	import deny_bots
+	reverse_proxy 192.168.1.7:3001
+}
+
+emby.jpenguin.duckdns.org {
+	import duckdns_tls
+	import block_dotfiles
+	import deny_bots
+	reverse_proxy 192.168.1.7:8097
+}

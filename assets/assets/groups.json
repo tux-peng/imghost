@@ -1,0 +1,51 @@
+{
+  "groups": [
+    {
+      "name": "mod",
+      "parent": "builder",
+      "members": [],
+      "perms": [
+        "blockinfo",
+        "whitelist",
+        "bankick",
+        "groupadmin"
+      ]
+    },
+    {
+      "name": "builder+",
+      "parent": "builder",
+      "members": [],
+      "perms": [
+        "pixelart"
+      ]
+    },
+    {
+      "name": "builder",
+      "parent": "guest",
+      "members": [],
+      "perms": [
+        "paint"
+      ]
+    },
+    {
+      "name": "guest",
+      "default": true,
+      "members": [],
+      "perms": [
+        "spawn",
+        "chat",
+        "build"
+      ]
+    },
+    {
+      "name": "op",
+      "parent": "mod",
+      "members": [
+        "tux_peng"
+      ],
+      "perms": [
+        "*"
+      ]
+    }
+  ]
+}

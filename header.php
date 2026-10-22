@@ -37,6 +37,7 @@ $page_title = $page_title ?? get_site_name();
                 <a href="<?= h(base_url()) ?>/admin.php">Admin</a>
             <?php endif; ?>
             <span class="user">@<?= h($user['username']) ?></span>
+            <a href="<?= h(base_url()) ?>/account.php">Account</a>
             <a href="<?= h(base_url()) ?>/logout.php">Log out</a>
         <?php else: ?>
             <a href="<?= h(base_url()) ?>/login.php">Log in</a>

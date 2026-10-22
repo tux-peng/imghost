@@ -8,10 +8,23 @@ $mine = isset($_GET['mine']) && $user;
 $page_title = $mine ? 'My images' : 'Upload';
 $bulk_error = '';
 
-if ($user && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_to_gallery') {
+if ($user && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = (string) ($_POST['action'] ?? '');
     if (!csrf_check()) {
         $bulk_error = 'Bad request.';
-    } else {
+    } elseif ($action === 'delete_selected') {
+        $image_ids = $_POST['image_ids'] ?? [];
+        if (!is_array($image_ids)) {
+            $image_ids = [];
+        }
+        $config = require __DIR__ . '/config.php';
+        $result = delete_user_images(db(), (int) $user['id'], $image_ids, (string) $config['upload_path']);
+        if ($result['ok']) {
+            header('Location: ' . ($mine ? 'index.php?mine=1' : 'index.php'));
+            exit;
+        }
+        $bulk_error = $result['error'];
+    } elseif ($action === 'add_to_gallery') {
         $image_ids = $_POST['image_ids'] ?? [];
         if (!is_array($image_ids)) {
             $image_ids = [];
@@ -186,7 +199,6 @@ $accept_attr = rtrim($accept_attr, ',');
     <?php else: ?>
         <form method="post" action="" id="bulkGalleryForm">
             <?= csrf_field() ?>
-            <input type="hidden" name="action" value="add_to_gallery">
             <div class="bulkbar">
                 <label class="bulk-select-all">
                     <input type="checkbox" id="select_all"> Select all
@@ -203,7 +215,8 @@ $accept_attr = rtrim($accept_attr, ',');
                 <label class="bulk-new" id="bulk_new_gallery_row" style="display:none">New gallery name
                     <input type="text" name="new_gallery_name" id="bulk_new_gallery_name" maxlength="100" placeholder="Gallery name">
                 </label>
-                <button class="primary" type="submit">Add checked to gallery</button>
+                <button class="primary" type="submit" name="action" value="add_to_gallery">Add checked to gallery</button>
+                <button class="danger" type="submit" name="action" value="delete_selected">Delete selected</button>
             </div>
             <div class="grid">
                 <?php foreach ($images as $img): ?>
@@ -241,6 +254,20 @@ $accept_attr = rtrim($accept_attr, ',');
                     }
                 });
             }
+            form.addEventListener('submit', function (e) {
+                var submitter = e.submitter;
+                if (!submitter || submitter.value !== 'delete_selected') return;
+                var n = form.querySelectorAll('input.pick:checked').length;
+                var msg = n === 1
+                    ? 'Delete this image permanently?'
+                    : 'Delete ' + n + ' selected images permanently?';
+                if (n === 0) {
+                    msg = 'Delete selected images permanently?';
+                }
+                if (!confirm(msg)) {
+                    e.preventDefault();
+                }
+            });
         })();
         </script>
     <?php endif; ?>

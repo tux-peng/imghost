@@ -11,23 +11,41 @@ if (!$user) {
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_check()) {
-    $name = trim($_POST['name'] ?? '');
-    $desc = trim($_POST['description'] ?? '');
-    if ($name === '') {
-        $error = 'Gallery name is required.';
-    } elseif (mb_strlen($name) > 100) {
-        $error = 'Name must be 100 characters or fewer.';
-    } else {
-        try {
-            $slug = unique_gallery_slug();
-            $stmt = db()->prepare(
-                'INSERT INTO galleries (user_id, slug, name, description, created_at) VALUES (?, ?, ?, ?, ?)'
-            );
-            $stmt->execute([$user['id'], $slug, $name, substr($desc, 0, 500), time()]);
-            header('Location: gallery.php?s=' . urlencode($slug));
+    $action = $_POST['action'] ?? '';
+    if ($action === 'delete_gallery') {
+        $config = require __DIR__ . '/config.php';
+        $gid = (int) ($_POST['gallery_id'] ?? 0);
+        $result = delete_user_gallery(
+            db(),
+            (int) $user['id'],
+            $gid,
+            (string) $config['upload_path'],
+            false
+        );
+        if (!empty($result['ok'])) {
+            header('Location: galleries.php');
             exit;
-        } catch (Throwable $e) {
-            $error = 'Could not create gallery.';
+        }
+        $error = $result['error'] ?? 'Could not delete gallery.';
+    } else {
+        $name = trim($_POST['name'] ?? '');
+        $desc = trim($_POST['description'] ?? '');
+        if ($name === '') {
+            $error = 'Gallery name is required.';
+        } elseif (mb_strlen($name) > 100) {
+            $error = 'Name must be 100 characters or fewer.';
+        } else {
+            try {
+                $slug = unique_gallery_slug();
+                $stmt = db()->prepare(
+                    'INSERT INTO galleries (user_id, slug, name, description, created_at) VALUES (?, ?, ?, ?, ?)'
+                );
+                $stmt->execute([$user['id'], $slug, $name, substr($desc, 0, 500), time()]);
+                header('Location: gallery.php?s=' . urlencode($slug));
+                exit;
+            } catch (Throwable $e) {
+                $error = 'Could not create gallery.';
+            }
         }
     }
 }
@@ -84,6 +102,18 @@ include __DIR__ . '/header.php';
                     <span title="<?= h($g['name']) ?>"><?= h($g['name']) ?></span>
                     <span><?= $counts[$g['id']] ?> img<?= $counts[$g['id']] !== 1 ? 's' : '' ?></span>
                 </div>
+                <?php
+                $n = $counts[$g['id']];
+                $confirm = $n === 0
+                    ? 'Delete this empty gallery?'
+                    : 'Delete this gallery and ' . $n . ' image' . ($n !== 1 ? 's' : '') . ' permanently?';
+                ?>
+                <form class="tile-delete" method="post" onsubmit="return confirm(<?= json_encode($confirm, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>);">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="action" value="delete_gallery">
+                    <input type="hidden" name="gallery_id" value="<?= (int) $g['id'] ?>">
+                    <button class="danger" type="submit">Delete</button>
+                </form>
             </div>
         <?php endforeach; ?>
     </div>
